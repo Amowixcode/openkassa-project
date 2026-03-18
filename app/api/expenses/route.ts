@@ -5,6 +5,8 @@ import { createClient, getServerSupabaseConfigError } from "../../lib/supabase/s
 type CreateExpensePayload = {
   title?: unknown;
   amount?: unknown;
+  date?: unknown;
+  category?: unknown;
 };
 
 function validateExpenseInput(payload: CreateExpensePayload) {
@@ -16,6 +18,10 @@ function validateExpenseInput(payload: CreateExpensePayload) {
       : typeof payload.amount === "string"
         ? Number(payload.amount)
         : NaN;
+  const date =
+    typeof payload.date === "string" ? payload.date.trim() : "";
+  const category =
+    typeof payload.category === "string" ? payload.category.trim() : "";
 
   if (!title) {
     return {
@@ -29,10 +35,24 @@ function validateExpenseInput(payload: CreateExpensePayload) {
     };
   }
 
+  if (!date || Number.isNaN(Date.parse(date))) {
+    return {
+      error: "Date is required.",
+    };
+  }
+
+  if (!category) {
+    return {
+      error: "Category is required.",
+    };
+  }
+
   return {
     data: {
       title,
       amount,
+      expense_date: date,
+      category,
     },
   };
 }
@@ -94,9 +114,11 @@ export async function POST(request: Request) {
     .insert({
       title: validationResult.data.title,
       amount: validationResult.data.amount,
+      expense_date: validationResult.data.expense_date,
+      category: validationResult.data.category,
       user_id: user.id,
     })
-    .select("id, title, amount, user_id, created_at")
+    .select("id, title, amount, expense_date, category, user_id, created_at")
     .single();
 
   if (error) {
