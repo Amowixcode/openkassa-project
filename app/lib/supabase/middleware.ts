@@ -9,9 +9,10 @@ export async function updateSession(request: NextRequest) {
   const supabaseConfig = getSupabaseConfig();
   const { pathname } = request.nextUrl;
   const isAuthRoute = authRoutes.some((route) => pathname.startsWith(route));
+  const isApiRoute = pathname.startsWith("/api/");
 
   if (!supabaseConfig) {
-    if (isAuthRoute) {
+    if (isAuthRoute || isApiRoute) {
       return NextResponse.next({ request });
     }
 
@@ -47,6 +48,10 @@ export async function updateSession(request: NextRequest) {
   const {
     data: { user },
   } = await supabase.auth.getUser();
+
+  if (isApiRoute) {
+    return response;
+  }
 
   const isProtectedRoute = !isAuthRoute;
 
