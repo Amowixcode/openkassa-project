@@ -4,6 +4,7 @@ import Image from "next/image";
 import { FormEvent, useEffect, useRef, useState } from "react";
 
 import { createClient } from "../lib/supabase/client";
+import { useSelectedTeam } from "./team-context";
 
 const categoryOptions = [
   "Food",
@@ -20,7 +21,12 @@ function getTodayDate() {
   return new Date().toISOString().slice(0, 10);
 }
 
-export function ExpenseForm() {
+type ExpenseFormProps = {
+  onCreated: () => void;
+};
+
+export function ExpenseForm({ onCreated }: ExpenseFormProps) {
+  const { selectedMembership, selectedTeamId } = useSelectedTeam();
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const [title, setTitle] = useState("");
   const [amount, setAmount] = useState("");
@@ -46,6 +52,10 @@ export function ExpenseForm() {
       return null;
     }
 
+    if (!selectedTeamId) {
+      throw new Error("Select a team before uploading a receipt.");
+    }
+
     const supabase = createClient();
 
     if (!supabase) {
@@ -62,7 +72,7 @@ export function ExpenseForm() {
     }
 
     const fileExtension = receiptFile.name.split(".").pop()?.toLowerCase() || "bin";
-    const filePath = `${user.id}/${crypto.randomUUID()}.${fileExtension}`;
+    const filePath = `${selectedTeamId}/${user.id}/${crypto.randomUUID()}.${fileExtension}`;
 
     setIsUploadingReceipt(true);
 
@@ -79,11 +89,7 @@ export function ExpenseForm() {
       throw new Error(uploadError.message);
     }
 
-    const { data } = supabase.storage
-      .from("expense-receipts")
-      .getPublicUrl(filePath);
-
-    return data.publicUrl;
+    return filePath;
   }
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
@@ -104,6 +110,7 @@ export function ExpenseForm() {
           amount,
           date,
           category,
+          teamId: selectedTeamId,
           receiptUrl,
         }),
       });
@@ -117,7 +124,7 @@ export function ExpenseForm() {
         return;
       }
 
-      window.dispatchEvent(new Event("expense-created"));
+      onCreated();
       setTitle("");
       setAmount("");
       setDate(getTodayDate());
@@ -137,7 +144,7 @@ export function ExpenseForm() {
   }
 
   return (
-    <article className="rounded-[2rem] border border-[color:var(--border-soft)] bg-[linear-gradient(180deg,rgba(255,255,255,0.96)_0%,rgba(245,243,255,0.96)_100%)] p-8 shadow-[var(--shadow-soft)]">
+    <article className="rounded-lg border border-[color:var(--border-soft)] bg-white p-6 shadow-[var(--shadow-soft)]">
       <div className="space-y-3">
         <p className="text-sm font-semibold uppercase tracking-[0.3em] text-[color:var(--primary)]">
           Expense Entry
@@ -146,15 +153,23 @@ export function ExpenseForm() {
           Add an expense
         </h2>
         <p className="text-sm leading-6 text-[color:var(--muted)]">
-          Record a new expense with the amount, date, and category in one step.
+          Record a new expense for the active team with the amount, date, and
+          category in one step.
         </p>
+      </div>
+
+      <div className="mt-4 rounded-lg border border-[#DBEAFE] bg-[#F8FAFC] px-4 py-3 text-sm text-[color:var(--muted)]">
+        Creating expense in{" "}
+        <span className="font-semibold text-[color:var(--foreground)]">
+          {selectedMembership?.teamName ?? "No team selected"}
+        </span>
       </div>
 
       <form className="mt-8 space-y-4" onSubmit={handleSubmit}>
         <label className="block space-y-2">
           <span className="text-sm font-medium text-[color:var(--foreground)]">Title</span>
           <input
-            className="w-full rounded-2xl border border-[color:var(--border-soft)] bg-white/85 px-4 py-3 text-[color:var(--foreground)] outline-none transition focus:border-[color:var(--primary)] focus:bg-white"
+            className="w-full rounded-lg border border-[color:var(--border-soft)] bg-white px-4 py-3 text-[color:var(--foreground)] outline-none transition focus:border-[#3B82F6]"
             type="text"
             value={title}
             onChange={(event) => setTitle(event.target.value)}
@@ -167,7 +182,7 @@ export function ExpenseForm() {
           <label className="block space-y-2">
             <span className="text-sm font-medium text-[color:var(--foreground)]">Amount</span>
             <input
-              className="w-full rounded-2xl border border-[color:var(--border-soft)] bg-white/85 px-4 py-3 text-[color:var(--foreground)] outline-none transition focus:border-[color:var(--primary)] focus:bg-white"
+              className="w-full rounded-lg border border-[color:var(--border-soft)] bg-white px-4 py-3 text-[color:var(--foreground)] outline-none transition focus:border-[#3B82F6]"
               type="number"
               inputMode="decimal"
               min="0.01"
@@ -182,7 +197,7 @@ export function ExpenseForm() {
           <label className="block space-y-2">
             <span className="text-sm font-medium text-[color:var(--foreground)]">Date</span>
             <input
-              className="w-full rounded-2xl border border-[color:var(--border-soft)] bg-white/85 px-4 py-3 text-[color:var(--foreground)] outline-none transition focus:border-[color:var(--primary)] focus:bg-white"
+              className="w-full rounded-lg border border-[color:var(--border-soft)] bg-white px-4 py-3 text-[color:var(--foreground)] outline-none transition focus:border-[#3B82F6]"
               type="date"
               value={date}
               onChange={(event) => setDate(event.target.value)}
@@ -194,7 +209,7 @@ export function ExpenseForm() {
         <label className="block space-y-2">
           <span className="text-sm font-medium text-[color:var(--foreground)]">Category</span>
           <select
-            className="w-full rounded-2xl border border-[color:var(--border-soft)] bg-white/85 px-4 py-3 text-[color:var(--foreground)] outline-none transition focus:border-[color:var(--primary)] focus:bg-white"
+            className="w-full rounded-lg border border-[color:var(--border-soft)] bg-white px-4 py-3 text-[color:var(--foreground)] outline-none transition focus:border-[#3B82F6]"
             value={category}
             onChange={(event) => setCategory(event.target.value)}
             required
@@ -213,7 +228,7 @@ export function ExpenseForm() {
           </span>
           <input
             ref={fileInputRef}
-            className="w-full rounded-2xl border border-[color:var(--border-soft)] bg-white/85 px-4 py-3 text-[color:var(--foreground)] outline-none transition file:mr-4 file:rounded-full file:border-0 file:bg-[rgba(124,58,237,0.12)] file:px-4 file:py-2 file:font-medium file:text-[color:var(--primary)] focus:border-[color:var(--primary)] focus:bg-white"
+            className="w-full rounded-lg border border-[color:var(--border-soft)] bg-white px-4 py-3 text-[color:var(--foreground)] outline-none transition file:mr-4 file:rounded-full file:border-0 file:bg-[#DBEAFE] file:px-4 file:py-2 file:font-medium file:text-[#1D4ED8] focus:border-[#3B82F6]"
             type="file"
             accept="image/*,.pdf,application/pdf"
             onChange={(event) => {
@@ -249,7 +264,7 @@ export function ExpenseForm() {
         </label>
 
         {receiptFile ? (
-          <div className="rounded-[1.5rem] border border-[color:var(--border-soft)] bg-white/80 p-4">
+          <div className="rounded-lg border border-[color:var(--border-soft)] bg-white p-4">
             <div className="flex items-start justify-between gap-4">
               <div>
                 <p className="text-sm font-medium text-[color:var(--foreground)]">
@@ -260,7 +275,7 @@ export function ExpenseForm() {
                 </p>
               </div>
               <button
-                className="rounded-full border border-[color:var(--border-soft)] bg-[rgba(245,243,255,0.9)] px-3 py-1.5 text-xs font-medium text-[color:var(--foreground)] transition hover:border-[color:var(--accent)] hover:bg-white"
+                className="rounded-full border border-[color:var(--border-soft)] bg-[#F8FAFC] px-3 py-1.5 text-xs font-medium text-[color:var(--foreground)] transition hover:bg-white"
                 type="button"
                 onClick={() => {
                   if (receiptPreviewUrl) {
@@ -278,7 +293,7 @@ export function ExpenseForm() {
               </button>
             </div>
             {receiptPreviewUrl ? (
-              <div className="mt-4 overflow-hidden rounded-[1rem] border border-[color:var(--border-soft)] bg-[rgba(245,243,255,0.75)]">
+              <div className="mt-4 overflow-hidden rounded-lg border border-[color:var(--border-soft)] bg-[#F8FAFC]">
                 <Image
                   src={receiptPreviewUrl}
                   alt="Receipt preview"
@@ -289,7 +304,7 @@ export function ExpenseForm() {
                 />
               </div>
             ) : (
-              <div className="mt-4 rounded-[1rem] bg-[rgba(245,243,255,0.9)] px-4 py-6 text-sm text-[color:var(--muted)]">
+              <div className="mt-4 rounded-lg border border-[color:var(--border-soft)] bg-[#F8FAFC] px-4 py-6 text-sm text-[color:var(--muted)]">
                 PDF selected. Preview is not shown here, but the file will be uploaded
                 with the expense.
               </div>
@@ -298,21 +313,21 @@ export function ExpenseForm() {
         ) : null}
 
         {error ? (
-          <p className="rounded-2xl bg-red-50 px-4 py-3 text-sm text-red-700">
+          <p className="rounded-lg bg-red-50 px-4 py-3 text-sm text-red-700">
             {error}
           </p>
         ) : null}
 
         {successMessage ? (
-          <p className="rounded-2xl bg-emerald-50 px-4 py-3 text-sm text-emerald-700">
+          <p className="rounded-lg bg-emerald-50 px-4 py-3 text-sm text-emerald-700">
             {successMessage}
           </p>
         ) : null}
 
         <button
-          className="w-full rounded-2xl bg-[image:var(--app-gradient)] px-4 py-3 text-sm font-semibold text-white shadow-[0_18px_40px_rgba(124,58,237,0.28)] transition hover:scale-[1.01] hover:shadow-[0_22px_48px_rgba(124,58,237,0.32)] disabled:cursor-not-allowed disabled:opacity-60"
+          className="w-full rounded-lg bg-[#2563EB] px-4 py-3 text-sm font-semibold text-white transition hover:bg-[#1D4ED8] disabled:cursor-not-allowed disabled:bg-[#E2E8F0] disabled:text-[#64748B]"
           type="submit"
-          disabled={isSubmitting || isUploadingReceipt}
+          disabled={isSubmitting || isUploadingReceipt || !selectedTeamId}
         >
           {isSubmitting || isUploadingReceipt
             ? isUploadingReceipt

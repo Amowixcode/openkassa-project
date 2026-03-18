@@ -1,21 +1,18 @@
 @import "tailwindcss";
 
 :root {
-  --background: #f5f3ff;
-  --foreground: #1e1b4b;
-  --primary: #7c3aed;
-  --accent: #a78bfa;
-  --primary-deep: #5b21b6;
-  --secondary: #3b82f6;
+  --background: #f8fafc;
+  --foreground: #0f172a;
+  --primary: #2563eb;
+  --accent: #f59e0b;
+  --primary-deep: #1d4ed8;
+  --secondary: #2563eb;
   --card: #ffffff;
-  --muted: #6d6791;
-  --border-soft: rgba(124, 58, 237, 0.12);
-  --shadow-soft: 0 28px 80px rgba(76, 29, 149, 0.12);
-  --app-gradient: linear-gradient(135deg, #7c3aed 0%, #3b82f6 100%);
-  --page-glow:
-    radial-gradient(circle at top left, rgba(167, 139, 250, 0.35), transparent 30%),
-    radial-gradient(circle at top right, rgba(59, 130, 246, 0.22), transparent 28%),
-    linear-gradient(180deg, #f8f5ff 0%, #f5f3ff 52%, #eef4ff 100%);
+  --muted: #64748b;
+  --border-soft: #e2e8f0;
+  --shadow-soft: 0 1px 2px rgba(15, 23, 42, 0.04);
+  --app-gradient: linear-gradient(135deg, #1d4ed8 0%, #2563eb 100%);
+  --page-glow: #f8fafc;
 }
 
 @theme inline {
@@ -31,6 +28,13 @@ body {
   background: var(--page-glow);
   color: var(--foreground);
   font-family: var(--font-sans);
+}
+
+input,
+select,
+textarea,
+button {
+  font: inherit;
 }
 
 button:not(:disabled),

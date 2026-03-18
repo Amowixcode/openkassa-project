@@ -26,7 +26,7 @@ export function SignOutButton() {
 
   return (
     <button
-      className="rounded-full border border-[color:var(--border-soft)] bg-white/75 px-4 py-2 text-sm font-medium text-[color:var(--foreground)] transition hover:border-[color:var(--accent)] hover:bg-[rgba(245,243,255,0.95)] disabled:cursor-not-allowed disabled:opacity-60"
+      className="w-full rounded-lg border border-[color:var(--border-soft)] bg-[#F8FAFC] px-4 py-2.5 text-sm font-medium text-[color:var(--foreground)] transition hover:bg-white disabled:cursor-not-allowed disabled:opacity-60"
       type="button"
       onClick={handleSignOut}
       disabled={isLoading}

@@ -2,13 +2,33 @@ import { NextResponse } from "next/server";
 
 import { createClient, getServerSupabaseConfigError } from "../../lib/supabase/server";
 
+type ExpenseRecord = {
+  id: string;
+  user_id: string;
+  title: string;
+  amount: number;
+  expense_date: string;
+  category: string;
+  receipt_url: string | null;
+  status: "pending" | "approved" | "rejected";
+  created_at: string;
+};
+
 type CreateExpensePayload = {
   title?: unknown;
   amount?: unknown;
   date?: unknown;
   category?: unknown;
+  teamId?: unknown;
   receiptUrl?: unknown;
 };
+
+const uuidPattern =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+
+function isUuid(value: string) {
+  return uuidPattern.test(value);
+}
 
 function validateExpenseInput(payload: CreateExpensePayload) {
   const title =
@@ -23,8 +43,16 @@ function validateExpenseInput(payload: CreateExpensePayload) {
     typeof payload.date === "string" ? payload.date.trim() : "";
   const category =
     typeof payload.category === "string" ? payload.category.trim() : "";
+  const teamId =
+    typeof payload.teamId === "string" ? payload.teamId.trim() : "";
   const receiptUrl =
     typeof payload.receiptUrl === "string" ? payload.receiptUrl.trim() : "";
+
+  if (!teamId || !isUuid(teamId)) {
+    return {
+      error: "A valid teamId is required.",
+    };
+  }
 
   if (!title) {
     return {
@@ -50,18 +78,13 @@ function validateExpenseInput(payload: CreateExpensePayload) {
     };
   }
 
-  if (receiptUrl && !URL.canParse(receiptUrl)) {
-    return {
-      error: "Receipt URL must be valid.",
-    };
-  }
-
   return {
     data: {
       title,
       amount,
       expense_date: date,
       category,
+      team_id: teamId,
       receipt_url: receiptUrl || null,
     },
   };
@@ -105,17 +128,62 @@ async function getAuthenticatedUser() {
   };
 }
 
-export async function GET() {
+async function withSignedReceiptUrls(
+  supabase: NonNullable<Awaited<ReturnType<typeof createClient>>>,
+  expenses: ExpenseRecord[]
+) {
+  const signedExpenses = await Promise.all(
+    expenses.map(async (expense) => {
+      if (!expense.receipt_url) {
+        return expense;
+      }
+
+      const { data, error } = await supabase.storage
+        .from("expense-receipts")
+        .createSignedUrl(expense.receipt_url, 60 * 60);
+
+      if (error) {
+        return {
+          ...expense,
+          receipt_url: null,
+        };
+      }
+
+      return {
+        ...expense,
+        receipt_url: data.signedUrl,
+      };
+    })
+  );
+
+  return signedExpenses;
+}
+
+export async function GET(request: Request) {
   const authResult = await getAuthenticatedUser();
 
   if ("errorResponse" in authResult) {
     return authResult.errorResponse;
   }
 
+  const { searchParams } = new URL(request.url);
+  const teamId = searchParams.get("teamId")?.trim() ?? "";
+
+  if (!teamId || !isUuid(teamId)) {
+    return NextResponse.json(
+      {
+        error: "A valid teamId query parameter is required.",
+      },
+      { status: 400 }
+    );
+  }
+
   const { data, error } = await authResult.supabase
     .from("expenses")
-    .select("id, title, amount, expense_date, category, receipt_url, status, created_at")
-    .eq("user_id", authResult.user.id)
+    .select(
+      "id, user_id, title, amount, expense_date, category, receipt_url, status, created_at"
+    )
+    .eq("team_id", teamId)
     .order("expense_date", { ascending: false })
     .order("created_at", { ascending: false });
 
@@ -128,8 +196,13 @@ export async function GET() {
     );
   }
 
+  const signedExpenses = await withSignedReceiptUrls(
+    authResult.supabase,
+    (data ?? []) as ExpenseRecord[]
+  );
+
   return NextResponse.json({
-    expenses: data,
+    expenses: signedExpenses,
   });
 }
 
@@ -172,9 +245,13 @@ export async function POST(request: Request) {
       expense_date: validationResult.data.expense_date,
       category: validationResult.data.category,
       receipt_url: validationResult.data.receipt_url,
+      team_id: validationResult.data.team_id,
       user_id: authResult.user.id,
+      status: "pending",
     })
-    .select("id, title, amount, expense_date, category, receipt_url, status, user_id, created_at")
+    .select(
+      "id, user_id, title, amount, expense_date, category, receipt_url, status, created_at"
+    )
     .single();
 
   if (error) {
@@ -186,9 +263,13 @@ export async function POST(request: Request) {
     );
   }
 
+  const [signedExpense] = await withSignedReceiptUrls(authResult.supabase, [
+    data as ExpenseRecord,
+  ]);
+
   return NextResponse.json(
     {
-      expense: data,
+      expense: signedExpense,
     },
     { status: 201 }
   );

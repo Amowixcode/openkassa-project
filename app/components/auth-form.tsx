@@ -114,7 +114,7 @@ export function AuthForm({
   }
 
   return (
-    <div className="w-full max-w-md rounded-[2rem] border border-[color:var(--border-soft)] bg-[color:var(--card)] p-8 shadow-[var(--shadow-soft)] backdrop-blur">
+    <div className="w-full max-w-md rounded-lg border border-[color:var(--border-soft)] bg-[color:var(--card)] p-8 shadow-[var(--shadow-soft)]">
       <div className="space-y-3">
         <p className="text-sm font-semibold uppercase tracking-[0.3em] text-[color:var(--primary)]">
           OpenKassa Auth
@@ -131,7 +131,7 @@ export function AuthForm({
         <label className="block space-y-2">
           <span className="text-sm font-medium text-[color:var(--foreground)]">Email</span>
           <input
-            className="w-full rounded-2xl border border-[color:var(--border-soft)] bg-[rgba(245,243,255,0.8)] px-4 py-3 text-[color:var(--foreground)] outline-none transition focus:border-[color:var(--primary)] focus:bg-white"
+            className="w-full rounded-lg border border-[color:var(--border-soft)] bg-white px-4 py-3 text-[color:var(--foreground)] outline-none transition focus:border-[#3B82F6]"
             type="email"
             value={email}
             onChange={(event) => setEmail(event.target.value)}
@@ -144,7 +144,7 @@ export function AuthForm({
         <label className="block space-y-2">
           <span className="text-sm font-medium text-[color:var(--foreground)]">Password</span>
           <input
-            className="w-full rounded-2xl border border-[color:var(--border-soft)] bg-[rgba(245,243,255,0.8)] px-4 py-3 text-[color:var(--foreground)] outline-none transition focus:border-[color:var(--primary)] focus:bg-white"
+            className="w-full rounded-lg border border-[color:var(--border-soft)] bg-white px-4 py-3 text-[color:var(--foreground)] outline-none transition focus:border-[#3B82F6]"
             type="password"
             value={password}
             onChange={(event) => setPassword(event.target.value)}
@@ -161,7 +161,7 @@ export function AuthForm({
               Confirm password
             </span>
             <input
-              className="w-full rounded-2xl border border-[color:var(--border-soft)] bg-[rgba(245,243,255,0.8)] px-4 py-3 text-[color:var(--foreground)] outline-none transition focus:border-[color:var(--primary)] focus:bg-white"
+              className="w-full rounded-lg border border-[color:var(--border-soft)] bg-white px-4 py-3 text-[color:var(--foreground)] outline-none transition focus:border-[#3B82F6]"
               type="password"
               value={confirmPassword}
               onChange={(event) => setConfirmPassword(event.target.value)}
@@ -174,26 +174,26 @@ export function AuthForm({
         ) : null}
 
         {error ? (
-          <p className="rounded-2xl bg-red-50 px-4 py-3 text-sm text-red-700">
+          <p className="rounded-lg bg-red-50 px-4 py-3 text-sm text-red-700">
             {error}
           </p>
         ) : null}
 
         {message ? (
-          <p className="rounded-2xl bg-emerald-50 px-4 py-3 text-sm text-emerald-700">
+          <p className="rounded-lg bg-emerald-50 px-4 py-3 text-sm text-emerald-700">
             {message}
           </p>
         ) : null}
 
         {!hasSupabaseConfig ? (
-          <p className="rounded-2xl bg-amber-50 px-4 py-3 text-sm text-amber-800">
+          <p className="rounded-lg bg-amber-50 px-4 py-3 text-sm text-amber-800">
             {configError}. Update <code>.env.local</code> and restart the dev
             server.
           </p>
         ) : null}
 
         <button
-          className="w-full rounded-2xl bg-[image:var(--app-gradient)] px-4 py-3 text-sm font-semibold text-white shadow-[0_18px_40px_rgba(124,58,237,0.28)] transition hover:scale-[1.01] hover:shadow-[0_22px_48px_rgba(124,58,237,0.32)] disabled:cursor-not-allowed disabled:opacity-60"
+          className="w-full rounded-lg bg-[#2563EB] px-4 py-3 text-sm font-semibold text-white transition hover:bg-[#1D4ED8] disabled:cursor-not-allowed disabled:bg-[#E2E8F0] disabled:text-[#64748B]"
           type="submit"
           disabled={isSubmitting || !hasSupabaseConfig}
         >
