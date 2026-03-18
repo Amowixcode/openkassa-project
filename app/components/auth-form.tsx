@@ -114,24 +114,24 @@ export function AuthForm({
   }
 
   return (
-    <div className="w-full max-w-md rounded-[2rem] border border-black/10 bg-white p-8 shadow-[0_24px_80px_rgba(15,23,42,0.08)]">
+    <div className="w-full max-w-md rounded-[2rem] border border-[color:var(--border-soft)] bg-[color:var(--card)] p-8 shadow-[var(--shadow-soft)] backdrop-blur">
       <div className="space-y-3">
-        <p className="text-sm font-semibold uppercase tracking-[0.3em] text-amber-700">
+        <p className="text-sm font-semibold uppercase tracking-[0.3em] text-[color:var(--primary)]">
           OpenKassa Auth
         </p>
-        <h1 className="text-3xl font-semibold text-slate-900">
+        <h1 className="text-3xl font-semibold text-[color:var(--foreground)]">
           {currentContent.title}
         </h1>
-        <p className="text-sm leading-6 text-slate-600">
+        <p className="text-sm leading-6 text-[color:var(--muted)]">
           {currentContent.subtitle}
         </p>
       </div>
 
       <form className="mt-8 space-y-4" onSubmit={handleSubmit}>
         <label className="block space-y-2">
-          <span className="text-sm font-medium text-slate-700">Email</span>
+          <span className="text-sm font-medium text-[color:var(--foreground)]">Email</span>
           <input
-            className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-slate-900 outline-none transition focus:border-amber-500 focus:bg-white"
+            className="w-full rounded-2xl border border-[color:var(--border-soft)] bg-[rgba(245,243,255,0.8)] px-4 py-3 text-[color:var(--foreground)] outline-none transition focus:border-[color:var(--primary)] focus:bg-white"
             type="email"
             value={email}
             onChange={(event) => setEmail(event.target.value)}
@@ -142,9 +142,9 @@ export function AuthForm({
         </label>
 
         <label className="block space-y-2">
-          <span className="text-sm font-medium text-slate-700">Password</span>
+          <span className="text-sm font-medium text-[color:var(--foreground)]">Password</span>
           <input
-            className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-slate-900 outline-none transition focus:border-amber-500 focus:bg-white"
+            className="w-full rounded-2xl border border-[color:var(--border-soft)] bg-[rgba(245,243,255,0.8)] px-4 py-3 text-[color:var(--foreground)] outline-none transition focus:border-[color:var(--primary)] focus:bg-white"
             type="password"
             value={password}
             onChange={(event) => setPassword(event.target.value)}
@@ -157,11 +157,11 @@ export function AuthForm({
 
         {mode === "signup" ? (
           <label className="block space-y-2">
-            <span className="text-sm font-medium text-slate-700">
+            <span className="text-sm font-medium text-[color:var(--foreground)]">
               Confirm password
             </span>
             <input
-              className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-slate-900 outline-none transition focus:border-amber-500 focus:bg-white"
+              className="w-full rounded-2xl border border-[color:var(--border-soft)] bg-[rgba(245,243,255,0.8)] px-4 py-3 text-[color:var(--foreground)] outline-none transition focus:border-[color:var(--primary)] focus:bg-white"
               type="password"
               value={confirmPassword}
               onChange={(event) => setConfirmPassword(event.target.value)}
@@ -193,7 +193,7 @@ export function AuthForm({
         ) : null}
 
         <button
-          className="w-full rounded-2xl bg-slate-950 px-4 py-3 text-sm font-semibold text-white transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-60"
+          className="w-full rounded-2xl bg-[image:var(--app-gradient)] px-4 py-3 text-sm font-semibold text-white shadow-[0_18px_40px_rgba(124,58,237,0.28)] transition hover:scale-[1.01] hover:shadow-[0_22px_48px_rgba(124,58,237,0.32)] disabled:cursor-not-allowed disabled:opacity-60"
           type="submit"
           disabled={isSubmitting || !hasSupabaseConfig}
         >
@@ -201,10 +201,10 @@ export function AuthForm({
         </button>
       </form>
 
-      <p className="mt-6 text-sm text-slate-600">
+      <p className="mt-6 text-sm text-[color:var(--muted)]">
         {currentContent.alternateLabel}{" "}
         <Link
-          className="font-semibold text-amber-700 transition hover:text-amber-800"
+          className="font-semibold text-[color:var(--primary)] transition hover:text-[color:var(--primary-deep)]"
           href={currentContent.alternateHref}
         >
           {currentContent.alternateAction}
