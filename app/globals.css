@@ -33,6 +33,11 @@ body {
   font-family: var(--font-sans);
 }
 
+button:not(:disabled),
+[role="button"]:not([aria-disabled="true"]) {
+  cursor: pointer;
+}
+
 h1,
 h2,
 h3,
