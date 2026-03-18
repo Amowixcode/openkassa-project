@@ -1,6 +1,9 @@
 "use client";
 
-import { FormEvent, useState } from "react";
+import Image from "next/image";
+import { FormEvent, useEffect, useRef, useState } from "react";
+
+import { createClient } from "../lib/supabase/client";
 
 const categoryOptions = [
   "Food",
@@ -18,13 +21,70 @@ function getTodayDate() {
 }
 
 export function ExpenseForm() {
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
   const [title, setTitle] = useState("");
   const [amount, setAmount] = useState("");
   const [date, setDate] = useState(getTodayDate);
   const [category, setCategory] = useState(categoryOptions[0]);
+  const [receiptFile, setReceiptFile] = useState<File | null>(null);
+  const [receiptPreviewUrl, setReceiptPreviewUrl] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isUploadingReceipt, setIsUploadingReceipt] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
+
+  useEffect(() => {
+    return () => {
+      if (receiptPreviewUrl) {
+        URL.revokeObjectURL(receiptPreviewUrl);
+      }
+    };
+  }, [receiptPreviewUrl]);
+
+  async function uploadReceipt() {
+    if (!receiptFile) {
+      return null;
+    }
+
+    const supabase = createClient();
+
+    if (!supabase) {
+      throw new Error("Supabase is not configured for receipt uploads.");
+    }
+
+    const {
+      data: { user },
+      error: userError,
+    } = await supabase.auth.getUser();
+
+    if (userError || !user) {
+      throw new Error("You must be logged in to upload a receipt.");
+    }
+
+    const fileExtension = receiptFile.name.split(".").pop()?.toLowerCase() || "bin";
+    const filePath = `${user.id}/${crypto.randomUUID()}.${fileExtension}`;
+
+    setIsUploadingReceipt(true);
+
+    const { error: uploadError } = await supabase.storage
+      .from("expense-receipts")
+      .upload(filePath, receiptFile, {
+        cacheControl: "3600",
+        upsert: false,
+      });
+
+    setIsUploadingReceipt(false);
+
+    if (uploadError) {
+      throw new Error(uploadError.message);
+    }
+
+    const { data } = supabase.storage
+      .from("expense-receipts")
+      .getPublicUrl(filePath);
+
+    return data.publicUrl;
+  }
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -33,6 +93,7 @@ export function ExpenseForm() {
     setIsSubmitting(true);
 
     try {
+      const receiptUrl = await uploadReceipt();
       const response = await fetch("/api/expenses", {
         method: "POST",
         headers: {
@@ -43,6 +104,7 @@ export function ExpenseForm() {
           amount,
           date,
           category,
+          receiptUrl,
         }),
       });
 
@@ -55,14 +117,21 @@ export function ExpenseForm() {
         return;
       }
 
+      window.dispatchEvent(new Event("expense-created"));
       setTitle("");
       setAmount("");
       setDate(getTodayDate());
       setCategory(categoryOptions[0]);
+      setReceiptFile(null);
+      setReceiptPreviewUrl(null);
+      if (fileInputRef.current) {
+        fileInputRef.current.value = "";
+      }
       setSuccessMessage("Expense saved successfully.");
     } catch {
       setError("Something went wrong while submitting the expense.");
     } finally {
+      setIsUploadingReceipt(false);
       setIsSubmitting(false);
     }
   }
@@ -138,6 +207,96 @@ export function ExpenseForm() {
           </select>
         </label>
 
+        <label className="block space-y-2">
+          <span className="text-sm font-medium text-[color:var(--foreground)]">
+            Receipt
+          </span>
+          <input
+            ref={fileInputRef}
+            className="w-full rounded-2xl border border-[color:var(--border-soft)] bg-white/85 px-4 py-3 text-[color:var(--foreground)] outline-none transition file:mr-4 file:rounded-full file:border-0 file:bg-[rgba(124,58,237,0.12)] file:px-4 file:py-2 file:font-medium file:text-[color:var(--primary)] focus:border-[color:var(--primary)] focus:bg-white"
+            type="file"
+            accept="image/*,.pdf,application/pdf"
+            onChange={(event) => {
+              const nextFile = event.target.files?.[0] ?? null;
+
+              setReceiptFile(nextFile);
+
+              if (!nextFile) {
+                if (receiptPreviewUrl) {
+                  URL.revokeObjectURL(receiptPreviewUrl);
+                }
+                setReceiptPreviewUrl(null);
+                return;
+              }
+
+              if (nextFile.type === "application/pdf") {
+                if (receiptPreviewUrl) {
+                  URL.revokeObjectURL(receiptPreviewUrl);
+                }
+                setReceiptPreviewUrl(null);
+                return;
+              }
+
+              if (receiptPreviewUrl) {
+                URL.revokeObjectURL(receiptPreviewUrl);
+              }
+              setReceiptPreviewUrl(URL.createObjectURL(nextFile));
+            }}
+          />
+          <p className="text-xs text-[color:var(--muted)]">
+            Upload an image or PDF receipt to keep documentation with the expense.
+          </p>
+        </label>
+
+        {receiptFile ? (
+          <div className="rounded-[1.5rem] border border-[color:var(--border-soft)] bg-white/80 p-4">
+            <div className="flex items-start justify-between gap-4">
+              <div>
+                <p className="text-sm font-medium text-[color:var(--foreground)]">
+                  Receipt preview
+                </p>
+                <p className="mt-1 text-xs text-[color:var(--muted)]">
+                  {receiptFile.name}
+                </p>
+              </div>
+              <button
+                className="rounded-full border border-[color:var(--border-soft)] bg-[rgba(245,243,255,0.9)] px-3 py-1.5 text-xs font-medium text-[color:var(--foreground)] transition hover:border-[color:var(--accent)] hover:bg-white"
+                type="button"
+                onClick={() => {
+                  if (receiptPreviewUrl) {
+                    URL.revokeObjectURL(receiptPreviewUrl);
+                  }
+
+                  setReceiptFile(null);
+                  setReceiptPreviewUrl(null);
+                  if (fileInputRef.current) {
+                    fileInputRef.current.value = "";
+                  }
+                }}
+              >
+                Remove file
+              </button>
+            </div>
+            {receiptPreviewUrl ? (
+              <div className="mt-4 overflow-hidden rounded-[1rem] border border-[color:var(--border-soft)] bg-[rgba(245,243,255,0.75)]">
+                <Image
+                  src={receiptPreviewUrl}
+                  alt="Receipt preview"
+                  width={800}
+                  height={500}
+                  className="h-56 w-full object-cover"
+                  unoptimized
+                />
+              </div>
+            ) : (
+              <div className="mt-4 rounded-[1rem] bg-[rgba(245,243,255,0.9)] px-4 py-6 text-sm text-[color:var(--muted)]">
+                PDF selected. Preview is not shown here, but the file will be uploaded
+                with the expense.
+              </div>
+            )}
+          </div>
+        ) : null}
+
         {error ? (
           <p className="rounded-2xl bg-red-50 px-4 py-3 text-sm text-red-700">
             {error}
@@ -153,9 +312,13 @@ export function ExpenseForm() {
         <button
           className="w-full rounded-2xl bg-[image:var(--app-gradient)] px-4 py-3 text-sm font-semibold text-white shadow-[0_18px_40px_rgba(124,58,237,0.28)] transition hover:scale-[1.01] hover:shadow-[0_22px_48px_rgba(124,58,237,0.32)] disabled:cursor-not-allowed disabled:opacity-60"
           type="submit"
-          disabled={isSubmitting}
+          disabled={isSubmitting || isUploadingReceipt}
         >
-          {isSubmitting ? "Saving expense..." : "Save expense"}
+          {isSubmitting || isUploadingReceipt
+            ? isUploadingReceipt
+              ? "Uploading receipt..."
+              : "Saving expense..."
+            : "Save expense"}
         </button>
       </form>
     </article>

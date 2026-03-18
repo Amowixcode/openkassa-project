@@ -7,6 +7,7 @@ type CreateExpensePayload = {
   amount?: unknown;
   date?: unknown;
   category?: unknown;
+  receiptUrl?: unknown;
 };
 
 function validateExpenseInput(payload: CreateExpensePayload) {
@@ -22,6 +23,8 @@ function validateExpenseInput(payload: CreateExpensePayload) {
     typeof payload.date === "string" ? payload.date.trim() : "";
   const category =
     typeof payload.category === "string" ? payload.category.trim() : "";
+  const receiptUrl =
+    typeof payload.receiptUrl === "string" ? payload.receiptUrl.trim() : "";
 
   if (!title) {
     return {
@@ -47,28 +50,37 @@ function validateExpenseInput(payload: CreateExpensePayload) {
     };
   }
 
+  if (receiptUrl && !URL.canParse(receiptUrl)) {
+    return {
+      error: "Receipt URL must be valid.",
+    };
+  }
+
   return {
     data: {
       title,
       amount,
       expense_date: date,
       category,
+      receipt_url: receiptUrl || null,
     },
   };
 }
 
-export async function POST(request: Request) {
+async function getAuthenticatedUser() {
   const supabase = await createClient();
 
   if (!supabase) {
-    return NextResponse.json(
-      {
-        error:
-          getServerSupabaseConfigError() ??
-          "Supabase server client is not configured.",
-      },
-      { status: 500 }
-    );
+    return {
+      errorResponse: NextResponse.json(
+        {
+          error:
+            getServerSupabaseConfigError() ??
+            "Supabase server client is not configured.",
+        },
+        { status: 500 }
+      ),
+    };
   }
 
   const {
@@ -77,12 +89,55 @@ export async function POST(request: Request) {
   } = await supabase.auth.getUser();
 
   if (authError || !user) {
+    return {
+      errorResponse: NextResponse.json(
+        {
+          error: "You must be logged in to access expenses.",
+        },
+        { status: 401 }
+      ),
+    };
+  }
+
+  return {
+    supabase,
+    user,
+  };
+}
+
+export async function GET() {
+  const authResult = await getAuthenticatedUser();
+
+  if ("errorResponse" in authResult) {
+    return authResult.errorResponse;
+  }
+
+  const { data, error } = await authResult.supabase
+    .from("expenses")
+    .select("id, title, amount, expense_date, category, receipt_url, status, created_at")
+    .eq("user_id", authResult.user.id)
+    .order("expense_date", { ascending: false })
+    .order("created_at", { ascending: false });
+
+  if (error) {
     return NextResponse.json(
       {
-        error: "You must be logged in to add an expense.",
+        error: error.message,
       },
-      { status: 401 }
+      { status: 500 }
     );
+  }
+
+  return NextResponse.json({
+    expenses: data,
+  });
+}
+
+export async function POST(request: Request) {
+  const authResult = await getAuthenticatedUser();
+
+  if ("errorResponse" in authResult) {
+    return authResult.errorResponse;
   }
 
   let payload: CreateExpensePayload;
@@ -109,16 +164,17 @@ export async function POST(request: Request) {
     );
   }
 
-  const { data, error } = await supabase
+  const { data, error } = await authResult.supabase
     .from("expenses")
     .insert({
       title: validationResult.data.title,
       amount: validationResult.data.amount,
       expense_date: validationResult.data.expense_date,
       category: validationResult.data.category,
-      user_id: user.id,
+      receipt_url: validationResult.data.receipt_url,
+      user_id: authResult.user.id,
     })
-    .select("id, title, amount, expense_date, category, user_id, created_at")
+    .select("id, title, amount, expense_date, category, receipt_url, status, user_id, created_at")
     .single();
 
   if (error) {
